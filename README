@@ -1,0 +1,35 @@
+WaveFunction Example Code
+Written By: Andrew Robert Owens
+CPSC587F15 Animaiton 
+
+Attached here is "relatively" simple code for loading a 2D triangulated plane, representing the parameter space of a funciton changes the z values of the vertice to be the result of a wave moving wave function.
+
+What this code demonstrates is:
+
+-how to set up a Mesh object from algorithmicly seting up the triangles and vertices in initWaveMesh()
+
+-you can alter vertex information per frame, but the connectivity information stays the same
+this is done by reloading the vertex buffer every frame of animaition, while only loading the triangle indices (element buffer) once in init(). This is not dissimilar to what you will/could do in your mas spring system
+
+-has a working fly mode camera for exploring the scene
+w-move forward
+s-move backward
+a-strife left
+d-strife right
+q-move up
+e-move down
+
+arrow left/click move to right: rotate to the left
+arrow right/click move to left: rotate to the right
+arrow up/down/click move up/down : rotates camera up and down
+
+-has simple "poor man" picking of vertices of mesh
+idea: project all vertices to screen, then in screen space search for cloesed vertex to mouse position
+
+ctrl+left click-select vertex and have it be followed in the animaiton
+
+space bar-pause/play
+esc-exit
+
+-simple phong shading
+face normals are calculated in geometry shader, so only the same info from the wave needs to be sent to the GPU in the loadBuffers()
