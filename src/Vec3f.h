@@ -1,3 +1,15 @@
+/**
+ * Author:	Andrew Robert Owens
+ * Email:	arowens [at] ucalgary.ca
+ * Date:	January, 2017
+ * Course:	CPSC 587/687 Fundamental of Computer Animation
+ * Organization: University of Calgary
+ *
+ * Copyright (c) 2017 - Please give credit to the author.
+ *
+ * File:	Vec3f.h
+ */
+
 #ifndef VEC3F_H
 #define VEC3F_H
 
@@ -277,11 +289,11 @@ inline Vec3f Vec3f::slerp(float t, Vec3f const &a, Vec3f const &b) {
 }
 
 inline bool Vec3f::hasNans() const {
-  return isnan(m_x) || isnan(m_y) || isnan(m_y);
+  return std::isnan(m_x) || std::isnan(m_y) || std::isnan(m_y);
 }
 
 inline bool Vec3f::hasInfs() const {
-  return isinf(m_x) || isinf(m_y) || isinf(m_z);
+  return std::isinf(m_x) || std::isinf(m_y) || std::isinf(m_z);
 }
 
 #endif // Vec3f
