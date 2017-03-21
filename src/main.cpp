@@ -29,6 +29,8 @@
 #include "OpenGLMatrixTools.h"
 #include "Camera.h"
 #include "HomoVec4f.h"
+#include "Mass.h"
+#include "Spring.h"
 
 bool g_cursorLocked;
 float g_cursorX, g_cursorY;
@@ -50,8 +52,8 @@ Mat4f V;
 Mat4f P;
 
 Mesh massSpringSys;
-Mass masses[];
-Spring springs[];
+Mass m;
+Spring s;
 int sampleID = -1;
 
 Camera camera;
@@ -276,24 +278,26 @@ void loadBuffer() {
 
 // Creates triangle and vertex information for each spring and mass
 void initSysMesh() {
+  Mesh::Vertices verts;
+  Mesh::Triangles tris;
 
-  for (int i = 0; i < masses.size(); i++) {
+  for (int i = 0; i < m.Masses.size(); i++) {
+    cout << "the index number is " << i << endl;
     int size = 2;
     float scale = 1.f; //0.075f;
 
-    Mesh::Vertices verts;
     // Used to make sin function
      for (int r = 0; r < size; ++r) {
        for (int c = 0; c < size; ++c) {
          // push back Vertex( position, rgb )
          float x = (c - size * 0.5) * scale;
          float y = (r - size * 0.5) * scale;
-    //
-        x = x + 20;
-        y = y + 20;
-        verts.emplace_back(Vec3f(x, y, 0),
-                            Vec3f((r) / float(size), (c) / float(size), 1));
 
+         x = x + m.Masses[i].getPos().x();
+         y = y + m.Masses[i].getPos().y();
+cout << "a vert is being pushed back" << endl;
+         verts.emplace_back(Vec3f(x, y, 0),
+                            Vec3f((r) / float(size), (c) / float(size), 1));
        }
      }
 
@@ -307,13 +311,18 @@ void initSysMesh() {
     // |   \|
     // a----b
 
-    Mesh::Triangles tris;
     for (int row = 0; row < size - 1; ++row) {
       for (int col = 0; col < size - 1; ++col) {
         int a = id(row, col);
         int b = id(row, col + 1);
         int c = id(row + 1, col);
         int d = id(row + 1, col + 1);
+
+        cout << "triangle a is " << a << endl;
+        cout << "triangle b is " << a << endl;
+        cout << "triangle c is " << a << endl;
+        cout << "triangle d is " << a << endl;
+
 
         tris.emplace_back(a, b, c);
         tris.emplace_back(c, b, d);
@@ -328,12 +337,12 @@ void initSysMesh() {
 
 void init() {
   glEnable(GL_DEPTH_TEST);
-  glPointSize(50));
+  glPointSize(50);
 
   camera = Camera(Vec3f{0, 0, 50}, Vec3f{0, 0, -1}, Vec3f{0, 1, 0});
 
   // SETUP SHADERS, BUFFERS, VAOs
-
+cout << "coming into init" << endl;
   initSysMesh();
   loadmassSpringSys(0);
 
@@ -506,19 +515,22 @@ void windowKeyFunc(GLFWwindow *window, int key, int scancode, int action,
     g_play = set ? !g_play : g_play;
     break;
   case GLFW_KEY_1:
-    setUpMassOnSpring();
+//    setUpMassOnSpring();
   default:
     break;
   }
 }
 
 void setUpMassOnSpring() {
-  masses = new Mass[2];
-  springs = new Spring[1];
+  Mass *massA = new Mass(100.f, Vec3f(0, 20, 0));
+  Mass *massB = new Mass(100.f, Vec3f(0, 0, 0));
+  Spring *spring1 = new Spring(5.f, massA, massB, 20.0f);
 
-  mass[0] = Mass(100.f, Vec3f(0, 20, 0));
-  mass[1] = Mass(100.f, Vec3f(0, -20, 0));
-  spring[0] = Spring(5.f, mass[0], mass[1], 20);
+  m.Masses.push_back(*massA);
+  m.Masses.push_back(*massB);
+  s.Springs.push_back(*spring1);
+
+  init();
 }
 
 
@@ -560,7 +572,8 @@ int main(int argc, char **argv) {
   cout << "GL Version: :" << glGetString(GL_VERSION) << endl;
   cout << GL_ERROR() << endl;
 
-  init(); // our own initialize stuff func
+//  init(); // our own initialize stuff func
+  setUpMassOnSpring();
 
   float const deltaT = 0.001f;
   float t = 0;
