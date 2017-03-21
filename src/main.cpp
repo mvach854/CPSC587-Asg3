@@ -11,6 +11,9 @@
 // NOTE: this dependencies (include/library files) will need to be tweaked if
 // you wish to run this on a non lab computer
 
+// This code was modified by Manorie Vachon. The wave function and included parameters
+// were adapted to work with springs and masses.
+
 #include <iostream>
 #include <cmath>
 #include <chrono>
@@ -46,7 +49,9 @@ Mat4f M;
 Mat4f V;
 Mat4f P;
 
-Mesh waveFunction;
+Mesh massSpringSys;
+Mass masses[];
+Spring springs[];
 int sampleID = -1;
 
 Camera camera;
@@ -68,6 +73,7 @@ float WIN_FAR = 1000;
 void displayFunc();
 void resizeFunc();
 void init();
+void initSysMesh();
 void generateIDs();
 void deleteIDs();
 void setupVAO();
@@ -77,6 +83,8 @@ void loadModelViewMatrix();
 void setupModelViewProjectionTransform();
 void reloadMVPUniform();
 std::string GL_ERROR();
+// Sets up the initial scene of a mass on a spring
+void setUpMassOnSpring();
 int main(int, char **);
 // function declarations
 
@@ -89,8 +97,9 @@ void displayFunc() {
   // Use VAO that holds buffer bindings
   // and attribute config of buffers
   glBindVertexArray(vaoID);
+
   glDrawElements(GL_TRIANGLES,               // mode
-                 waveFunction.indiceCount(), // count
+                 massSpringSys.indiceCount(), // count
                  GL_UNSIGNED_INT,            // type
                  (void *)0                   // element array buffer offset
                  );
@@ -220,22 +229,25 @@ void setPickingColor() {
   glUniform3f(id, 1, 0, 0);
 }
 
-void loadWaveFunction(float t) {
-  float sinHeight = 1;
-  float cosHeight = 4;
+void loadmassSpringSys(float t) {
+//  float sinHeight = 1;
+//  float cosHeight = 4;
 
-  for (auto &vert : waveFunction.vertices()) {
+  for (auto &vert : massSpringSys.vertices()) {
     auto &pos = vert.pos;
     auto &rgb = vert.rgb;
-    float radius = pos.x() * pos.x() + pos.y() * pos.y();
-    float r = (radius + t) * 0.05;
+  //  float radius = pos.x() * pos.x() + pos.y() * pos.y();
+  //  float r = (radius + t) * 0.05;
 
-    float z = (sinHeight * std::sin(r) + cosHeight * std::cos(0.5f * r));
-    float i = (z + 3) / (6); // just to get a changing color...
+//    float z = (sinHeight * std::sin(r) + cosHeight * std::cos(0.5f * r));
+//    float i = (z + 3) / (6); // just to get a changing color...
 
-    pos.z(z);
-    rgb.x(i);
-    rgb.y(1. - i);
+    pos.x(pos.x() + t);
+    pos.y(pos.y() + t);
+
+//    pos.z(z);
+//    rgb.x(i);
+//    rgb.y(1. - i);
   }
 }
 
@@ -244,8 +256,8 @@ void reloadVertexBuffer() {
   glBufferData(
       GL_ARRAY_BUFFER,
       sizeof(Mesh::Vertex) *
-          waveFunction.vertexCount(), // byte size of Vec3f, 4 of them
-      waveFunction.vertexData(),      // pointer (Vec3f*) to contents of verts
+          massSpringSys.vertexCount(), // byte size of Vec3f, 4 of them
+      massSpringSys.vertexData(),      // pointer (Vec3f*) to contents of verts
       GL_DYNAMIC_DRAW);               // Usage pattern of GPU buffer
 }
 
@@ -257,64 +269,73 @@ void loadBuffer() {
   glBufferData(
       GL_ELEMENT_ARRAY_BUFFER,
       sizeof(Mesh::Triangle) *
-          waveFunction.triangleCount(), // byte size of Vec3f, 4 of them
-      waveFunction.triangleData(),      // pointer (Vec3f*) to contents of verts
+          massSpringSys.triangleCount(), // byte size of Vec3f, 4 of them
+      massSpringSys.triangleData(),      // pointer (Vec3f*) to contents of verts
       GL_STATIC_DRAW);                  // Usage pattern of GPU buffer
 }
 
-void initWaveMesh() {
+// Creates triangle and vertex information for each spring and mass
+void initSysMesh() {
 
-  int size = 500;
-  float scale = 0.075f;
+  for (int i = 0; i < masses.size(); i++) {
+    int size = 2;
+    float scale = 1.f; //0.075f;
 
-  Mesh::Vertices verts;
-  for (int r = 0; r < size; ++r) {
-    for (int c = 0; c < size; ++c) {
-      // push back Vertex( position, rgb )
-      float x = (c - size * 0.5) * scale;
-      float y = (r - size * 0.5) * scale;
+    Mesh::Vertices verts;
+    // Used to make sin function
+     for (int r = 0; r < size; ++r) {
+       for (int c = 0; c < size; ++c) {
+         // push back Vertex( position, rgb )
+         float x = (c - size * 0.5) * scale;
+         float y = (r - size * 0.5) * scale;
+    //
+        x = x + 20;
+        y = y + 20;
+        verts.emplace_back(Vec3f(x, y, 0),
+                            Vec3f((r) / float(size), (c) / float(size), 1));
 
-      verts.emplace_back(Vec3f(x, y, 0),
-                         Vec3f((r) / float(size), (c) / float(size), 1));
+       }
+     }
+
+    // helper lambda function to get array id from row, column
+    auto id = [size](int r, int c) { return (size)*r + c; };
+
+    // c----d
+    // |\   |
+    // | \  |
+    // |  \ |
+    // |   \|
+    // a----b
+
+    Mesh::Triangles tris;
+    for (int row = 0; row < size - 1; ++row) {
+      for (int col = 0; col < size - 1; ++col) {
+        int a = id(row, col);
+        int b = id(row, col + 1);
+        int c = id(row + 1, col);
+        int d = id(row + 1, col + 1);
+
+        tris.emplace_back(a, b, c);
+        tris.emplace_back(c, b, d);
+      }
     }
   }
 
-  // helper lambda function to get array id from row, column
-  auto id = [size](int r, int c) { return (size)*r + c; };
+  massSpringSys = Mesh(verts, tris);
+  printf("Triangle count %zu",massSpringSys.triangleCount());
 
-  // c----d
-  // |\   |
-  // | \  |
-  // |  \ |
-  // |   \|
-  // a----b
-
-  Mesh::Triangles tris;
-  for (int row = 0; row < size - 1; ++row) {
-    for (int col = 0; col < size - 1; ++col) {
-      int a = id(row, col);
-      int b = id(row, col + 1);
-      int c = id(row + 1, col);
-      int d = id(row + 1, col + 1);
-
-      tris.emplace_back(a, b, c);
-      tris.emplace_back(c, b, d);
-    }
-  }
-
-  waveFunction = Mesh(verts, tris);
 }
 
 void init() {
   glEnable(GL_DEPTH_TEST);
-  glPointSize(50);
+  glPointSize(50));
 
   camera = Camera(Vec3f{0, 0, 50}, Vec3f{0, 0, -1}, Vec3f{0, 1, 0});
 
   // SETUP SHADERS, BUFFERS, VAOs
 
-  initWaveMesh();
-  loadWaveFunction(0);
+  initSysMesh();
+  loadmassSpringSys(0);
 
   generateIDs();
   setupVAO();
@@ -348,7 +369,7 @@ void windowSetFramebufferSizeFunc(GLFWwindow *window, int width, int height) {
 int getClosestProjectedPointTo(int x, int y) {
   HomoVec4f vHomo;
   Vec3f v;
-  Mesh::Vertices const &verts = waveFunction.vertices();
+  Mesh::Vertices const &verts = massSpringSys.vertices();
   float screenX, screenY;
 
   int foundID = -1;
@@ -484,10 +505,22 @@ void windowKeyFunc(GLFWwindow *window, int key, int scancode, int action,
   case GLFW_KEY_SPACE:
     g_play = set ? !g_play : g_play;
     break;
+  case GLFW_KEY_1:
+    setUpMassOnSpring();
   default:
     break;
   }
 }
+
+void setUpMassOnSpring() {
+  masses = new Mass[2];
+  springs = new Spring[1];
+
+  mass[0] = Mass(100.f, Vec3f(0, 20, 0));
+  mass[1] = Mass(100.f, Vec3f(0, -20, 0));
+  spring[0] = Spring(5.f, mass[0], mass[1], 20);
+}
+
 
 int main(int argc, char **argv) {
   GLFWwindow *window;
@@ -502,7 +535,7 @@ int main(int argc, char **argv) {
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Physics Cube", NULL, NULL);
+  window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "Physics Mass-Spring Simulation", NULL, NULL);
   if (!window) {
     glfwTerminate();
     exit(EXIT_FAILURE);
@@ -529,7 +562,7 @@ int main(int argc, char **argv) {
 
   init(); // our own initialize stuff func
 
-  float const deltaT = 1.0;
+  float const deltaT = 0.001f;
   float t = 0;
 
   while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
@@ -537,7 +570,7 @@ int main(int argc, char **argv) {
 
     if (g_play) {
       t += deltaT;
-      loadWaveFunction(t);
+      loadmassSpringSys(t);
       reloadVertexBuffer();
     }
 

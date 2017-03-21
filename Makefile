@@ -20,7 +20,7 @@ LIBS=\
 
 SOURCES=$(wildcard $(SRCDIR)/*cpp)
 OBJECTS=$(addprefix $(OBJDIR)/,$(notdir $(SOURCES:.cpp=.o)))
-EXECUTABLE=WaveFunction
+EXECUTABLE=MassSpringSim
 
 all: $(SOURCES) $(EXECUTABLE)
 
@@ -32,4 +32,3 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 
 clean:
 	rm $(OBJDIR)/*.o $(EXECUTABLE)
-
